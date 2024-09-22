@@ -1,0 +1,2 @@
+[console_scripts]
+scandocument = docscanner.scripts:scandocument
