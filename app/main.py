@@ -66,7 +66,7 @@ async def write_excel(result: Result):
 
         custom_style = NamedStyle(name='custom style')
         
-        custom_style.font = Font(name='TH Sarabun New', size=14, bold=True) #กำหนด font
+        custom_style.font = Font(name='TH SarabunPSK', size=14, bold=True) #กำหนด font
         custom_style.fill = PatternFill('solid', fgColor='FFFFCC')
         custom_style.border = Border(left=Side(border_style='thin', 
                                             color='B2B2B2'), 
@@ -172,7 +172,7 @@ async def extract_receipt_information(file: UploadFile):
 
     try:
         text = pytesseract.image_to_string(dst_dilate, lang='tha+eng', config='--psm 6') #เเปลงรูปภาพใบเสร็จไปเป็น text
-    
+
         text_line = text.split('\n') #เเบ่งบรรทัดตามการขึ้นบรรทัดใหม่ \n
 
         for i in range(len(text_line)):
@@ -235,7 +235,7 @@ async def extract_receipt_information(file: UploadFile):
     except Exception:
         result = []
     
-
+    
     return {
         "result": result
     }
