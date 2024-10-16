@@ -18,11 +18,9 @@ def preprocessing(contents):
 
     image_path = scan_detection(blur, imRGB)
 
-    remove_shadow = shadow_extraction(image_path)
+    img = image_smoothening(image_path)
 
-    dst_dilate = image_smoothening(remove_shadow)
-
-    return dst_dilate
+    return img
 
     
     
@@ -82,52 +80,21 @@ def scan_detection(blur, imRGB):
 
 
 
-def image_smoothening(remove_shadow):
-    
-    imGray = cv2.cvtColor(remove_shadow, cv2.COLOR_BGR2GRAY)
+def image_smoothening(image_path):
 
-    #blur = cv2.GaussianBlur(imGray, (3, 3), 0)
+    imRGB = cv2.imread(image_path)
+    height = imRGB.shape[0]
+    width = imRGB.shape[1]
+    
+    if height < 4000 and width < 4000:
+        imRGB = cv2.resize(imRGB, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    
+    imGray = cv2.cvtColor(imRGB, cv2.COLOR_BGR2GRAY)
 
     thresh = cv2.threshold(imGray, 127, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
+    thresh = thresh[20:thresh.shape[0] - 20, 20:thresh.shape[1] - 20]
+
     #cv2.imwrite('..\\uploads\\thresh.jpg', thresh)
 
-
-    kernel = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], np.uint8)
-    print(kernel)
-
-    dst_dilate = cv2.dilate(thresh, kernel, iterations=1)
-
-    height, width = dst_dilate.shape
-    dst_dilate = dst_dilate[10:height - 10, 10:width - 10]
-
-    #cv2.imwrite('..\\uploads\\dst_dilate.jpg', dst_dilate)
-
-    return dst_dilate
-
-
-
-def shadow_extraction(image_path):
-
-    imRGB = cv2.imread(image_path)
-
-    bgr_planes = cv2.split(imRGB) #ทำการเเยก channel ของสี
-
-    res_md = []
-    result_planes = []
-
-    for plane in bgr_planes:
-
-        dilated_img = cv2.dilate(plane, np.ones((7, 7), np.uint8))
-        bg_img = cv2.medianBlur(dilated_img, 21)
-        
-        diff_img = 255-cv2.absdiff(plane, bg_img)
-
-        res_md.append(bg_img)
-        result_planes.append(diff_img)
-
-    remove_shadow = cv2.merge(result_planes) #ทำการรวมสีเเต่ละ channel เข้าด้วยกัน
-
-    #cv2.imwrite('..\\uploads\\remove_shadow.jpg', remove_shadow)
-
-    return remove_shadow
+    return thresh

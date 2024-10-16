@@ -17,6 +17,7 @@ app = FastAPI()
 origins = [ #รายชื่อเเหล่งที่มาที่ควรได้รับอนุญาตให้ทำการร้องขอข้ามเเหล่งที่มา
     "https://receipt-ocr-app-8c0a9.web.app",
     "http://localhost:5173",
+    "http://202.28.34.197:8027"
 ]
 
 app.add_middleware( #CORS or Cross-Origin Resource Sharing
@@ -159,7 +160,7 @@ async def write_excel(result: Result):
 async def extract_receipt_information(file: UploadFile):
 
     contents = await file.read() #อ่านข้อมูลทั้งหมดจากไฟล์
-    dst_dilate = pre_image.preprocessing(contents)
+    img = pre_image.preprocessing(contents)
 
 
     result = [] #ประกาศตัวเเปรสำหรับเก็บข้อมูลของใบเสร็จตาม pattern ที่กำหนด
@@ -168,11 +169,11 @@ async def extract_receipt_information(file: UploadFile):
 
     bigc_pattern = r'^\d+.\d+\s+\d{13}'
     makro_pattern = r'^\d+\s+\d{13}'
-    lotus_pattern = r'\d+.\d+\s+V$'
+    lotus_pattern = r'^\d{14}\s+\w+'
 
     try:
-        text = pytesseract.image_to_string(dst_dilate, lang='tha+eng', config='--psm 6') #เเปลงรูปภาพใบเสร็จไปเป็น text
-
+        text = pytesseract.image_to_string(img, lang='tha+eng', config='--psm 6') #เเปลงรูปภาพใบเสร็จไปเป็น text
+        
         text_line = text.split('\n') #เเบ่งบรรทัดตามการขึ้นบรรทัดใหม่ \n
 
         for i in range(len(text_line)):
