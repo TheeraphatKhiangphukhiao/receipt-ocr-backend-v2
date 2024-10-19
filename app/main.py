@@ -1,9 +1,9 @@
 from typing import Union
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse #สำหรับส่งไฟล์กลับไปเเบบ asynchronously
-from pydantic import BaseModel
 from openpyxl import Workbook #library ที่ออกเเบบมาเพื่อทำงานกับ excel โดยเฉพาะ โดยสามารถทำงานต่างๆที่เกี่ยวข้องกับ excel ได้เเทบทุกอย่าง
+from openpyxl.utils import get_column_letter #สำหรับเเปลงตัวเลขที่เเทนตำเเหน่งคอลัมน์ให้กลายเป็นตัวอักษรที่ใช้เเทนคอลัมน์ใน excel
 from openpyxl.styles import NamedStyle, Font, PatternFill, Border, Side #สำหรับตกเเต่ง font ในตารางข้อมูล 
 import pytesseract
 import re
@@ -30,31 +30,26 @@ app.add_middleware( #CORS or Cross-Origin Resource Sharing
 
 
 
-class Item(BaseModel):
-    item1: str
-    item2: str
-    item3: str
-    item4: str
-    item5: str
-    item6: str
-    item7: str
-    item8: str
-
-class Result(BaseModel):
-    result: list[Item]
-
-
-
 @app.post("/write/excel")
-async def write_excel(result: Result):
+async def write_excel(receipt_data: Request):
 
     file_path = "..\\write-file\\receipt.xlsx"
 
-
     try:
-        print(result)
-        rows = result.result
-        print(rows)
+        
+        receipt_data_json = await receipt_data.json() #สร้าง json
+
+        columns_set = []
+        cell_length = []
+
+        for data_json in receipt_data_json['result']:
+            for key in data_json:
+                columns_set.append(key)
+                cell_length.append(0)
+            break
+
+        columns_set = sorted(columns_set, key=lambda x: int(re.findall(r'\d+', x)[0]))
+        print(columns_set)
 
 
         file = Workbook() #Workbook คือ object ที่หน้าตาเหมือนกับ Excel สร้างมาเพื่อเป็นตัวเเทนของไฟล์ Excel ที่เราต้องการ อ่าน-เขียน
@@ -78,80 +73,37 @@ async def write_excel(result: Result):
                                                                 bottom=Side(border_style='thin',
                                                                             color='B2B2B2')
                                     )
-
+  
         i = 1
-        for row in rows:
+        for data_json in receipt_data_json['result']:
+            j = 1
+            for key in columns_set:
+                sheet.cell(i, j).value = data_json[key]
+                sheet.cell(i, j).style = custom_style
 
-            sheet.cell(i, 1).value = row.item1 ; sheet.cell(i, 1).style = custom_style
-            sheet.cell(i, 2).value = row.item2 ; sheet.cell(i, 2).style = custom_style
-            sheet.cell(i, 3).value = row.item3 ; sheet.cell(i, 3).style = custom_style
-            sheet.cell(i, 4).value = row.item4 ; sheet.cell(i, 4).style = custom_style
-            sheet.cell(i, 5).value = row.item5 ; sheet.cell(i, 5).style = custom_style
-            sheet.cell(i, 6).value = row.item6 ; sheet.cell(i, 6).style = custom_style
-            sheet.cell(i, 7).value = row.item7 ; sheet.cell(i, 7).style = custom_style
-            sheet.cell(i, 8).value = row.item8 ; sheet.cell(i, 8).style = custom_style
-
+                j += 1
             i += 1
+
+        for data_json in receipt_data_json['result']:
+            i = 0
+            for key in columns_set:
+                if len(data_json[key]) > cell_length[i]:
+                    cell_length[i] = len(data_json[key])
+                i += 1
         
-
-        cell_length = [0, 0, 0, 0, 0, 0, 0, 0]
-        
-        count = 1
-        for row in rows:
-
-            if count > 1:
-
-                if len(row.item1) > cell_length[0]:
-                    cell_length[0] = len(row.item1)
-
-                if len(row.item2) > cell_length[1]:
-                    cell_length[1] = len(row.item2)
-
-                if len(row.item3) > cell_length[2]:
-                    cell_length[2] = len(row.item3)
-
-                if len(row.item4) > cell_length[3]:
-                    cell_length[3] = len(row.item4)
-
-                if len(row.item5) > cell_length[4]:
-                    cell_length[4] = len(row.item5)
-
-                if len(row.item6) > cell_length[5]:
-                    cell_length[5] = len(row.item6)
-
-                if len(row.item7) > cell_length[6]:
-                    cell_length[6] = len(row.item7)
-
-                if len(row.item8) > cell_length[7]:
-                    cell_length[7] = len(row.item8)
-
-            else:
-                cell_length[0] = len(row.item1)
-                cell_length[1] = len(row.item2)
-                cell_length[2] = len(row.item3)
-                cell_length[3] = len(row.item4)
-                cell_length[4] = len(row.item5)
-                cell_length[5] = len(row.item6)
-                cell_length[6] = len(row.item7)
-                cell_length[7] = len(row.item8)
-
-            count += 1
-
         print(cell_length) #เเสดงความยาวสูงสุดของเเต่ละ cell
 
-        columns_names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-        
-        for i in range(len(columns_names)):
-
-            sheet.column_dimensions[columns_names[i]].width = (cell_length[i] + 5) #ขยายความกว้างของ column
-        
+        for i in range(len(columns_set)):
+            columns_name = get_column_letter(i + 1) #เเปลงตัวเลขที่เเทนตำเเหน่งของคอลัมน์ไปเป็นตัวอักษรที่เเทนตำเเหน่งของคอลัมน์ที่ใช้ใน Excel โดยฟังก์ชันนี้จะรองรับหลายตัวอักษรด้วยเช่น AA BB
+            sheet.column_dimensions[columns_name].width = (cell_length[i] + 5) #ขยายความกว้างของคอลัมน์
+            
         
         file.save(file_path) #บันทึกออกมาเป็นไฟล์ Excel
 
         return FileResponse(file_path)
     
     except Exception:
-        print('error')
+        print('Error in this service')
 
 
 
@@ -305,11 +257,29 @@ async def search_important_data(result, text_line, current_index, bigc_pattern, 
             words = text_line[i].split() #เเบ่งข้อความตามการเว้นวรรค
             print(words)
 
+            column4 = words[-4]
+            column3 = words[-5]
+            column4_data = ''
+            column5_data = ''
+
+            if column4.startswith(tuple("0123456789")) == True and column3.isnumeric() == False:
+                column4_data = column4
+                column5_data = " ".join(words[2:-4])
+
+            elif column4.startswith(tuple("0123456789")) == False and column3.isnumeric() == True:
+                column4_data = column3 + '' + column4
+                column5_data = " ".join(words[2:-5])
+            
+            else:
+                column4_data = column4
+                column5_data = " ".join(words[2:-4])
+
+
             result.append({
                 "item1": words[0], #เพิ่มจำนวน
                 "item2": words[1], #เพิ่มรหัสสินค้า
-                "item3": " ".join(words[2:-4]), #เพิ่มรายการสินค้า, การ join หมายความว่านำข้อมูลใน List มารวมกันเเละเเทนที่ช่องที่ต่อกันด้วย " " หรือจะใส่ "-"
-                "item4": words[-4], #เพิ่มหน่วยบรรจุ, -4 หมายถึงสมาชิกตัวที่ 4 จากด้านท้ายสุดของ List
+                "item3": column5_data, #เพิ่มรายการสินค้า, การ join หมายความว่านำข้อมูลใน List มารวมกันเเละเเทนที่ช่องที่ต่อกันด้วย " " หรือจะใส่ "-"
+                "item4": column4_data, #เพิ่มหน่วยบรรจุ, -4 หมายถึงสมาชิกตัวที่ 4 จากด้านท้ายสุดของ List
                 "item5": words[-3], #เพิ่มราคาต่อหน่วย (รวม VAT), การใช้ตัวเลขติดลบในการเข้าถึงสมาชิกของ List จะเป็นการเข้าถึงสมาชิกจากท้ายสุดมา -3 หมายถึงสมาชิกตัวที่สามจากด้านท้ายสุดของ List
                 "item6": "", #เนื่องจากใบเสร็จ makro ไม่มี column สำหรับข้อมูล ส่วนลด บาท ดังนั้นจึงใส่ค่าว่าง
                 "item7": words[-2], #เพิ่มข้อมูล VAT CODE, -2 หมายถึงสมาชิกตัวที่สองจากด้านท้ายสุดของ List
