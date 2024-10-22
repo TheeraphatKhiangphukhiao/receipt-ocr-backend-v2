@@ -95,6 +95,6 @@ def image_smoothening(image_path):
 
     thresh = thresh[10:thresh.shape[0] - 10, 10:thresh.shape[1] - 10]
 
-    # cv2.imwrite('..//uploads//thresh.jpg', thresh)
+    cv2.imwrite('..//uploads//thresh.jpg', thresh)
 
     return thresh

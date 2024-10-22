@@ -125,6 +125,7 @@ async def extract_receipt_information(file: UploadFile):
 
     try:
         text = pytesseract.image_to_string(img, lang='tha+eng', config='--psm 6') #เเปลงรูปภาพใบเสร็จไปเป็น text
+        print(text)
         
         text_line = text.split('\n') #เเบ่งบรรทัดตามการขึ้นบรรทัดใหม่ \n
 
